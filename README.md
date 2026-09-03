@@ -1,53 +1,54 @@
-# BurstStacker Web v2
+# BurstStacker Web v2.1 — Static GitHub Pages Build
 
-A phone-first, GitHub Pages-ready computational photography app that combines a burst of near-duplicate photographs into a cleaner, brighter, more detailed result. Processing happens in the browser; the photos are not uploaded to a server by this app.
+This version is intentionally **build-free**. It can be served directly by GitHub Pages.
 
-## v2 pipeline
+## Deploy
 
-1. **RAW / rendered decode** — JPEG, PNG and WebP use the browser decoder. DNG, CR2/CR3, NEF, ARW, RAF, RW2 and ORF use `libraw-wasm` with camera white balance and sRGB output.
-2. **Reference selection** — measures Laplacian edge variance and automatically chooses the sharpest frame.
-3. **Feature alignment** — ORB feature matching + RANSAC homography. A translation-template fallback handles feature-poor bursts.
-4. **Shared-area crop** — removes borders introduced by alignment.
-5. **Multi-frame reconstruction** — 2× mode maps native source pixels directly into a 2× reconstruction coordinate system before fusion; it does not stack at 1× and resize afterward.
-6. **Per-pixel sharpness weighting** — locally sharper samples receive more influence.
-7. **Exposure fusion** — well-exposed samples receive more weight, useful for slightly different burst exposures.
-8. **Motion / ghost rejection** — non-reference pixels that locally disagree with the aligned reference are continuously down-weighted.
-9. **Linear-light fusion** — RGB samples are averaged in linear light rather than directly averaging gamma-compressed sRGB values.
-10. **Finish pass** — adjustable midtone brightness and conservative unsharp detail enhancement.
+1. Put the contents of this folder at the root of your GitHub repository.
+2. In GitHub, open **Settings → Pages**.
+3. Under **Build and deployment**, choose **Deploy from a branch**.
+4. Select your main branch and **/(root)**.
+5. Save and wait for GitHub Pages to publish.
 
-## Modes
+Do **not** run Vite and do not point Pages at the old source build.
 
-- **Balanced** — the default.
-- **Detail** — stronger sharpness weighting and gentler motion rejection.
-- **Motion** — stronger ghost rejection for moving people / objects.
-- **HDR** — much stronger exposure weighting with less aggressive global exposure normalization.
+## Files that must be at repo root
 
-## Run locally
+- `index.html`
+- `style.css`
+- `app.js`
+- `manifest.webmanifest`
+- `icon.svg`
+- `sw.js`
+- `.nojekyll`
 
-```bash
-npm install
-npm run dev
-```
+## Why v2 looked broken
 
-Then open the local URL Vite prints.
+The old source expected Vite to bundle `style.css` into JavaScript and resolve the npm `libraw-wasm` import. It also used `/app.js`, which points to the domain root rather than a GitHub project subdirectory. When the unbuilt source was published directly, the browser got the HTML but not the app bundle or styles.
 
-## Put it on GitHub Pages
+v2.1 fixes that by:
 
-1. Create a GitHub repository.
-2. Upload the contents of this folder to the repository root.
-3. Make sure the default branch is named `main`.
-4. In **Settings → Pages**, set **Source** to **GitHub Actions**.
-5. Push a commit. `.github/workflows/pages.yml` installs the dependencies, builds the app and deploys `dist/` automatically.
+- linking `./style.css` directly;
+- loading `./app.js` with a project-relative URL;
+- removing all required npm/Vite imports;
+- lazy-loading the optional RAW decoder only when RAW files are selected;
+- keeping standard JPEG/PNG/WebP processing independent of RAW loading;
+- using only relative PWA/service-worker paths.
 
-`vite.config.js` uses `base: './'`, so the app works from a project Pages URL without hard-coding the repository name.
+## Processing features
 
-## Memory behavior
+- sharpest-frame reference selection
+- ORB/RANSAC multi-frame alignment
+- translation fallback
+- common-overlap cropping
+- local motion / ghost suppression
+- per-pixel sharpness weighting
+- exposure weighting
+- linear-light fusion
+- 1× stacking or 2× sub-pixel reconstruction
+- final brightness/detail pass
+- before/after comparison
+- PNG export
+- experimental browser-side RAW decoding for DNG/CR2/CR3/NEF/ARW/RAF/RW2/ORF
 
-High-resolution burst reconstruction can consume a lot of browser RAM. **Adaptive full resolution** is enabled by default and chooses a conservative input size based on device memory / screen class, especially in 2× mode. You can disable it on a high-memory desktop if you want to attempt native-resolution processing.
-
-## Technical notes
-
-- OpenCV.js is loaded from the official OpenCV 4.x documentation build.
-- RAW decoding is provided by `libraw-wasm` 1.6.0.
-- All alignment/fusion is local. The only network requests are to load the application dependencies unless they are already cached.
-- 2× reconstruction can recover useful sub-pixel sampling information when the burst contains small fractional camera shifts. It cannot recover scene information that was never captured, and large motion/focus changes still reduce stack quality.
+RAW decoding requires the browser to reach the external `libraw-wasm` module CDN. Normal rendered images do not.

@@ -1,7 +1,26 @@
-import LibRaw from 'libraw-wasm';
-import './style.css';
-
 const RAW_EXTS = new Set(['dng','cr2','cr3','nef','arw','raf','rw2','orf']);
+let LibRawCtor = null;
+let libRawPromise = null;
+
+async function getLibRaw() {
+  if (LibRawCtor) return LibRawCtor;
+  if (!libRawPromise) {
+    // RAW decoding is lazy-loaded only if the user actually adds a RAW file.
+    // That keeps JPEG/PNG/WebP stacking fully functional even if the RAW CDN is unavailable.
+    libRawPromise = import('https://esm.sh/libraw-wasm@1.6.0?bundle')
+      .then(mod => {
+        const ctor = mod.default || mod.LibRaw || mod;
+        if (typeof ctor !== 'function') throw new Error('RAW decoder module did not expose LibRaw.');
+        LibRawCtor = ctor;
+        return ctor;
+      })
+      .catch(err => {
+        libRawPromise = null;
+        throw new Error(`RAW decoder could not load: ${err?.message || err}`);
+      });
+  }
+  return libRawPromise;
+}
 const $ = (s) => document.querySelector(s);
 const state = {
   files: [], frames: [], cv: null, cvReady: false, busy: false,
@@ -133,6 +152,7 @@ function chooseMaxSide(nativeW,nativeH,scale){
 }
 
 async function decodeRaw(file){
+  const LibRaw = await getLibRaw();
   const raw=new LibRaw();
   try{
     const bytes=new Uint8Array(await file.arrayBuffer());
