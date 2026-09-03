@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0c10" />
+  <meta name="description" content="Browser-native burst photo stacking, motion rejection, exposure fusion and sub-pixel reconstruction." />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <title>BurstStacker</title>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar shell">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">B</div>
+        <div>
+          <h1>BurstStacker</h1>
+          <p>Multi-frame computational photography in your browser</p>
+        </div>
+      </div>
+      <div class="engine-pill" id="enginePill"><span class="dot"></span><span id="engineText">Loading image engine…</span></div>
+    </header>
+
+    <main class="shell app-grid">
+      <section class="workspace">
+        <div class="hero-card" id="dropZone">
+          <div class="empty-state" id="emptyState">
+            <div class="upload-icon">＋</div>
+            <h2>Add a burst</h2>
+            <p>Select several near-identical photos. Tiny handheld shifts are useful; large subject movement is handled automatically.</p>
+            <button class="btn btn-primary" id="pickFilesBtn">Choose images</button>
+            <p class="formats">JPEG · PNG · WebP · DNG · CR2 · NEF · ARW · RAF</p>
+          </div>
+
+          <div class="result-stage hidden" id="resultStage">
+            <div class="compare-wrap" id="compareWrap">
+              <canvas id="resultCanvas"></canvas>
+              <div class="before-layer" id="beforeLayer"><canvas id="beforeCanvas"></canvas></div>
+              <div class="compare-line" id="compareLine"><span></span></div>
+              <input id="compareSlider" class="compare-slider" type="range" min="0" max="100" value="50" aria-label="Before and after comparison" />
+              <div class="compare-label before">REFERENCE</div>
+              <div class="compare-label after">STACKED</div>
+            </div>
+            <div class="result-meta" id="resultMeta"></div>
+          </div>
+        </div>
+
+        <div class="process-card hidden" id="processCard">
+          <div class="process-head">
+            <div>
+              <strong id="processTitle">Preparing frames</strong>
+              <span id="processDetail">Nothing leaves your device.</span>
+            </div>
+            <span id="progressPct">0%</span>
+          </div>
+          <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+          <div class="step-strip" id="stepStrip">
+            <span data-step="decode">Decode</span><span data-step="analyze">Analyze</span><span data-step="align">Align</span><span data-step="fuse">Fuse</span><span data-step="enhance">Enhance</span>
+          </div>
+        </div>
+
+        <section class="frames-card hidden" id="framesCard">
+          <div class="section-head">
+            <div><h2>Frames</h2><p id="frameSummary">0 selected</p></div>
+            <div class="head-actions"><button class="btn btn-quiet" id="addMoreBtn">Add</button><button class="btn btn-quiet danger" id="clearBtn">Clear</button></div>
+          </div>
+          <div class="frame-strip" id="frameStrip"></div>
+        </section>
+      </section>
+
+      <aside class="controls-card hidden" id="controlsCard">
+        <div class="control-section">
+          <div class="section-head compact"><div><h2>Stack</h2><p>Choose what the burst should optimize for.</p></div></div>
+          <div class="segmented four" id="modeSegment">
+            <button data-mode="balanced" class="active">Balanced</button>
+            <button data-mode="detail">Detail</button>
+            <button data-mode="motion">Motion</button>
+            <button data-mode="exposure">HDR</button>
+          </div>
+        </div>
+
+        <div class="control-section">
+          <label class="control-label">Output resolution <span id="resolutionValue">2× reconstruct</span></label>
+          <div class="segmented" id="resolutionSegment">
+            <button data-scale="1">1×</button><button data-scale="2" class="active">2×</button>
+          </div>
+          <p class="microcopy">2× uses fractional frame shifts as extra samples instead of simply enlarging one photo.</p>
+        </div>
+
+        <div class="control-section sliders">
+          <label><span>Motion protection <b id="motionValue">72</b></span><input id="motionRange" type="range" min="0" max="100" value="72" /></label>
+          <label><span>Sharpness weighting <b id="sharpWeightValue">68</b></span><input id="sharpWeightRange" type="range" min="0" max="100" value="68" /></label>
+          <label><span>Exposure fusion <b id="exposureValue">42</b></span><input id="exposureRange" type="range" min="0" max="100" value="42" /></label>
+        </div>
+
+        <div class="control-section">
+          <div class="toggle-row"><div><strong>Adaptive full resolution</strong><small>Uses the largest safe processing size for this device.</small></div><label class="switch"><input type="checkbox" id="adaptiveToggle" checked /><span></span></label></div>
+        </div>
+
+        <div class="control-section sliders">
+          <label><span>Brightness <b id="brightnessValue">18</b></span><input id="brightnessRange" type="range" min="0" max="60" value="18" /></label>
+          <label><span>Final detail <b id="detailValue">32</b></span><input id="detailRange" type="range" min="0" max="100" value="32" /></label>
+        </div>
+
+        <button class="btn btn-primary big" id="combineBtn">Combine burst</button>
+        <button class="btn btn-secondary big hidden" id="saveBtn">Export PNG</button>
+
+        <div class="explain-card">
+          <strong>What it actually does</strong>
+          <p id="whyText">Aligns repeated samples, suppresses random noise, rejects moving pixels, and gives sharper regions more influence instead of blindly averaging everything.</p>
+        </div>
+      </aside>
+    </main>
+
+    <input id="fileInput" type="file" multiple hidden accept="image/jpeg,image/png,image/webp,.dng,.cr2,.cr3,.nef,.arw,.raf,.rw2,.orf" />
+    <div class="toast" id="toast" role="status"></div>
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
