@@ -3,37 +3,66 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b0c10" />
-  <meta name="description" content="Browser-native burst photo stacking, motion rejection, exposure fusion and sub-pixel reconstruction." />
+  <meta name="theme-color" content="#0a0b0e" />
+  <meta name="description" content="Private, browser-native burst photo stacking with motion rejection, exposure fusion and multi-frame reconstruction." />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./style.css" />
   <title>BurstStacker</title>
 </head>
 <body>
   <div id="app">
-    <header class="topbar shell">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">B</div>
-        <div>
-          <h1>BurstStacker</h1>
-          <p>Multi-frame computational photography in your browser</p>
+    <header class="topbar">
+      <div class="topbar-inner shell">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">B</div>
+          <div class="brand-copy">
+            <h1>BurstStacker</h1>
+            <p>Computational burst photography</p>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button class="icon-btn hidden" id="installBtn" aria-label="Install app" title="Install app">↓</button>
+          <div class="engine-pill" id="enginePill"><span class="dot"></span><span id="engineText">Starting…</span></div>
         </div>
       </div>
-      <div class="engine-pill" id="enginePill"><span class="dot"></span><span id="engineText">Loading image engine…</span></div>
     </header>
 
     <main class="shell app-grid">
       <section class="workspace">
-        <div class="hero-card" id="dropZone">
+        <section class="hero-card" id="dropZone">
           <div class="empty-state" id="emptyState">
-            <div class="upload-icon">＋</div>
-            <h2>Add a burst</h2>
-            <p>Select several near-identical photos. Tiny handheld shifts are useful; large subject movement is handled automatically.</p>
-            <button class="btn btn-primary" id="pickFilesBtn">Choose images</button>
-            <p class="formats">JPEG · PNG · WebP · DNG · CR2 · NEF · ARW · RAF</p>
+            <div class="upload-icon" aria-hidden="true">＋</div>
+            <div class="eyebrow">PRIVATE · ON DEVICE</div>
+            <h2>Turn a burst into one better photo.</h2>
+            <p>Stack repeated shots to suppress noise, recover cleaner detail, protect moving subjects, and use tiny handheld shifts as extra image samples.</p>
+            <button class="btn btn-primary hero-btn" id="pickFilesBtn">Choose burst photos</button>
+            <p class="formats">JPEG · PNG · WebP · DNG · CR2/3 · NEF · ARW · RAF · RW2 · ORF</p>
+          </div>
+
+          <div class="burst-stage hidden" id="burstStage">
+            <img id="burstHeroImage" alt="Selected burst preview" />
+            <div class="burst-fallback" id="burstFallback" aria-hidden="true"><span>◎</span></div>
+            <div class="burst-shade"></div>
+            <div class="burst-overlay">
+              <div>
+                <span class="hero-kicker" id="burstKicker">BURST READY</span>
+                <h2 id="burstTitle">Ready to reconstruct</h2>
+                <p id="burstSubtitle">Automatic reference selection · local motion protection</p>
+              </div>
+              <div class="burst-count" id="burstCount">0</div>
+            </div>
           </div>
 
           <div class="result-stage hidden" id="resultStage">
+            <div class="result-toolbar">
+              <div class="view-switch" id="viewSwitch">
+                <button data-view="compare" class="active">Compare</button>
+                <button data-view="result">Stacked</button>
+                <button data-view="reference">Reference</button>
+              </div>
+              <button class="mini-btn" id="resetCompareBtn">50/50</button>
+            </div>
             <div class="compare-wrap" id="compareWrap">
               <canvas id="resultCanvas"></canvas>
               <div class="before-layer" id="beforeLayer"><canvas id="beforeCanvas"></canvas></div>
@@ -44,79 +73,121 @@
             </div>
             <div class="result-meta" id="resultMeta"></div>
           </div>
-        </div>
+        </section>
 
-        <div class="process-card hidden" id="processCard">
+        <section class="process-card hidden" id="processCard" aria-live="polite">
           <div class="process-head">
             <div>
-              <strong id="processTitle">Preparing frames</strong>
+              <div class="process-title-row"><strong id="processTitle">Preparing frames</strong><span id="progressPct">0%</span></div>
               <span id="processDetail">Nothing leaves your device.</span>
             </div>
-            <span id="progressPct">0%</span>
+            <button class="mini-btn danger-text" id="cancelBtn">Cancel</button>
           </div>
           <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
           <div class="step-strip" id="stepStrip">
-            <span data-step="decode">Decode</span><span data-step="analyze">Analyze</span><span data-step="align">Align</span><span data-step="fuse">Fuse</span><span data-step="enhance">Enhance</span>
+            <span data-step="decode">Decode</span><span data-step="analyze">Analyze</span><span data-step="align">Align</span><span data-step="fuse">Fuse</span><span data-step="enhance">Finish</span>
           </div>
-        </div>
+        </section>
 
         <section class="frames-card hidden" id="framesCard">
           <div class="section-head">
             <div><h2>Frames</h2><p id="frameSummary">0 selected</p></div>
-            <div class="head-actions"><button class="btn btn-quiet" id="addMoreBtn">Add</button><button class="btn btn-quiet danger" id="clearBtn">Clear</button></div>
+            <div class="head-actions"><button class="btn btn-quiet" id="addMoreBtn">＋ Add</button><button class="btn btn-quiet danger" id="clearBtn">Clear</button></div>
+          </div>
+          <div class="health-row" id="healthRow">
+            <div class="health-main"><span class="health-dot"></span><strong id="healthTitle">Burst preflight</strong></div>
+            <span id="healthText">Choose photos to estimate output.</span>
           </div>
           <div class="frame-strip" id="frameStrip"></div>
+          <p class="frame-hint">Tap a frame to pin it as the reference. Tap it again to return to Auto.</p>
         </section>
       </section>
 
       <aside class="controls-card hidden" id="controlsCard">
-        <div class="control-section">
-          <div class="section-head compact"><div><h2>Stack</h2><p>Choose what the burst should optimize for.</p></div></div>
-          <div class="segmented four" id="modeSegment">
-            <button data-mode="balanced" class="active">Balanced</button>
-            <button data-mode="detail">Detail</button>
-            <button data-mode="motion">Motion</button>
-            <button data-mode="exposure">HDR</button>
+        <section class="control-section recipe-section">
+          <div class="section-head compact"><div><h2>Recipe</h2><p>Pick the kind of recovery you want.</p></div></div>
+          <div class="mode-grid" id="modeSegment">
+            <button data-mode="balanced" class="active"><b>Balanced</b><span>Best default</span></button>
+            <button data-mode="detail"><b>Detail+</b><span>Still scenes</span></button>
+            <button data-mode="motion"><b>Motion</b><span>People / pets</span></button>
+            <button data-mode="exposure"><b>HDR</b><span>Mixed exposure</span></button>
           </div>
-        </div>
+        </section>
 
-        <div class="control-section">
-          <label class="control-label">Output resolution <span id="resolutionValue">2× reconstruct</span></label>
+        <section class="control-section output-section">
+          <div class="control-title"><strong>Reconstruction</strong><span id="resolutionValue">2× multi-frame</span></div>
           <div class="segmented" id="resolutionSegment">
-            <button data-scale="1">1×</button><button data-scale="2" class="active">2×</button>
+            <button data-scale="1">1× Native</button><button data-scale="2" class="active">2× Reconstruct</button>
           </div>
-          <p class="microcopy">2× uses fractional frame shifts as extra samples instead of simply enlarging one photo.</p>
-        </div>
+          <div class="control-title crop-title"><strong>Edges</strong><span id="cropValue">Keep reference frame</span></div>
+          <div class="segmented" id="cropSegment">
+            <button data-crop="reference" class="active">Keep frame</button><button data-crop="common">Tight crop</button>
+          </div>
+          <p class="microcopy" id="memoryHint">Adaptive sizing keeps large 2× bursts inside a safe memory budget.</p>
+        </section>
 
-        <div class="control-section sliders">
-          <label><span>Motion protection <b id="motionValue">72</b></span><input id="motionRange" type="range" min="0" max="100" value="72" /></label>
-          <label><span>Sharpness weighting <b id="sharpWeightValue">68</b></span><input id="sharpWeightRange" type="range" min="0" max="100" value="68" /></label>
-          <label><span>Exposure fusion <b id="exposureValue">42</b></span><input id="exposureRange" type="range" min="0" max="100" value="42" /></label>
-        </div>
+        <details class="advanced-card" id="advancedDetails">
+          <summary><span><strong>Fusion controls</strong><small>Motion, detail, exposure and alignment</small></span><span class="chev">⌄</span></summary>
+          <div class="advanced-body">
+            <div class="sliders">
+              <label><span>Motion protection <b id="motionValue">72</b></span><input id="motionRange" type="range" min="0" max="100" value="72" /></label>
+              <label><span>Sharpness weighting <b id="sharpWeightValue">68</b></span><input id="sharpWeightRange" type="range" min="0" max="100" value="68" /></label>
+              <label><span>Exposure fusion <b id="exposureValue">42</b></span><input id="exposureRange" type="range" min="0" max="100" value="42" /></label>
+            </div>
+            <div class="toggle-row"><div><strong>Auto-reject weak frames</strong><small>Skips unreliable alignments instead of smearing them in.</small></div><label class="switch"><input type="checkbox" id="rejectToggle" checked /><span></span></label></div>
+            <div class="toggle-row"><div><strong>Adaptive resolution</strong><small>Uses the largest safe working size for this device and burst.</small></div><label class="switch"><input type="checkbox" id="adaptiveToggle" checked /><span></span></label></div>
+            <div class="select-row"><label for="alignmentSelect">Alignment model</label><select id="alignmentSelect"><option value="auto">Auto perspective</option><option value="translation">Translation only</option></select></div>
+          </div>
+        </details>
 
-        <div class="control-section">
-          <div class="toggle-row"><div><strong>Adaptive full resolution</strong><small>Uses the largest safe processing size for this device.</small></div><label class="switch"><input type="checkbox" id="adaptiveToggle" checked /><span></span></label></div>
-        </div>
+        <section class="control-section finish-section">
+          <div class="section-head compact"><div><h2>Finish</h2><p>Updates the preview live after stacking.</p></div><button class="mini-btn" id="resetTuneBtn">Reset</button></div>
+          <div class="sliders finish-sliders">
+            <label><span>Brightness <b id="brightnessValue">12</b></span><input id="brightnessRange" type="range" min="-30" max="60" value="12" /></label>
+            <label><span>Shadows <b id="shadowsValue">8</b></span><input id="shadowsRange" type="range" min="-50" max="70" value="8" /></label>
+            <label><span>Highlights <b id="highlightsValue">-8</b></span><input id="highlightsRange" type="range" min="-70" max="50" value="-8" /></label>
+            <label><span>Contrast <b id="contrastValue">6</b></span><input id="contrastRange" type="range" min="-50" max="60" value="6" /></label>
+            <label><span>Color <b id="saturationValue">4</b></span><input id="saturationRange" type="range" min="-60" max="60" value="4" /></label>
+            <label><span>Warmth <b id="warmthValue">0</b></span><input id="warmthRange" type="range" min="-40" max="40" value="0" /></label>
+            <label><span>Final detail <b id="detailValue">28</b></span><input id="detailRange" type="range" min="0" max="100" value="28" /></label>
+          </div>
+        </section>
 
-        <div class="control-section sliders">
-          <label><span>Brightness <b id="brightnessValue">18</b></span><input id="brightnessRange" type="range" min="0" max="60" value="18" /></label>
-          <label><span>Final detail <b id="detailValue">32</b></span><input id="detailRange" type="range" min="0" max="100" value="32" /></label>
+        <div class="desktop-actions">
+          <button class="btn btn-primary big" id="combineBtn">Combine burst</button>
+          <div class="export-row hidden" id="exportRow">
+            <button class="btn btn-secondary big" id="saveBtn">Export</button>
+            <button class="btn btn-secondary big" id="shareBtn">Share</button>
+          </div>
         </div>
-
-        <button class="btn btn-primary big" id="combineBtn">Combine burst</button>
-        <button class="btn btn-secondary big hidden" id="saveBtn">Export PNG</button>
 
         <div class="explain-card">
-          <strong>What it actually does</strong>
-          <p id="whyText">Aligns repeated samples, suppresses random noise, rejects moving pixels, and gives sharper regions more influence instead of blindly averaging everything.</p>
+          <strong>What this recipe is doing</strong>
+          <p id="whyText">Builds one reference instant, aligns the rest, rejects disagreeing motion, rewards sharper local samples, and fuses light in linear space.</p>
         </div>
       </aside>
     </main>
 
+    <nav class="mobile-dock hidden" id="mobileDock" aria-label="Burst actions">
+      <button class="dock-side" id="mobileAddBtn"><span>＋</span><small>Add</small></button>
+      <button class="dock-main" id="mobileCombineBtn">Combine burst</button>
+      <button class="dock-side hidden" id="mobileExportBtn"><span>⇩</span><small>Export</small></button>
+      <button class="dock-side hidden" id="mobileShareBtn"><span>↗</span><small>Share</small></button>
+    </nav>
+
+    <dialog class="export-sheet" id="exportDialog">
+      <form method="dialog">
+        <div class="sheet-handle"></div>
+        <div class="sheet-head"><div><h2>Export image</h2><p>Full-resolution output is rendered when you export.</p></div><button class="icon-btn" value="cancel" aria-label="Close">×</button></div>
+        <label class="export-option"><span><strong>Format</strong><small>PNG is lossless; JPEG is much smaller.</small></span><select id="exportFormat"><option value="jpeg">JPEG</option><option value="png">PNG</option><option value="webp">WebP</option></select></label>
+        <label class="export-option" id="qualityOption"><span><strong>Quality</strong><small id="qualityText">95%</small></span><input id="exportQuality" type="range" min="75" max="100" value="95" /></label>
+        <button class="btn btn-primary big" id="exportConfirm" value="cancel" type="button">Save full-resolution image</button>
+      </form>
+    </dialog>
+
     <input id="fileInput" type="file" multiple hidden accept="image/jpeg,image/png,image/webp,.dng,.cr2,.cr3,.nef,.arw,.raf,.rw2,.orf" />
     <div class="toast" id="toast" role="status"></div>
   </div>
-
-  <script type="module" src="/app.js"></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>

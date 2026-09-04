@@ -1,1 +1,11 @@
-{"name":"BurstStacker","short_name":"BurstStacker","start_url":"./","display":"standalone","background_color":"#090a0d","theme_color":"#0b0c10","description":"In-browser multi-frame burst stacking and sub-pixel reconstruction.","icons":[{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
+{
+  "name": "BurstStacker",
+  "short_name": "BurstStacker",
+  "description": "Private multi-frame computational photography in your browser.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090a0d",
+  "theme_color": "#090a0d",
+  "icons": [{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}

@@ -1,53 +1,57 @@
-# BurstStacker Web v2
+# BurstStacker Web v3.0 — Static GitHub Pages Build
 
-A phone-first, GitHub Pages-ready computational photography app that combines a burst of near-duplicate photographs into a cleaner, brighter, more detailed result. Processing happens in the browser; the photos are not uploaded to a server by this app.
+BurstStacker is a build-free, phone-first burst-photo stacking app. All standard-image processing happens in the browser; RAW decoding is lazy-loaded only when a RAW file is selected.
 
-## v2 pipeline
+## Deploy on GitHub Pages
 
-1. **RAW / rendered decode** — JPEG, PNG and WebP use the browser decoder. DNG, CR2/CR3, NEF, ARW, RAF, RW2 and ORF use `libraw-wasm` with camera white balance and sRGB output.
-2. **Reference selection** — measures Laplacian edge variance and automatically chooses the sharpest frame.
-3. **Feature alignment** — ORB feature matching + RANSAC homography. A translation-template fallback handles feature-poor bursts.
-4. **Shared-area crop** — removes borders introduced by alignment.
-5. **Multi-frame reconstruction** — 2× mode maps native source pixels directly into a 2× reconstruction coordinate system before fusion; it does not stack at 1× and resize afterward.
-6. **Per-pixel sharpness weighting** — locally sharper samples receive more influence.
-7. **Exposure fusion** — well-exposed samples receive more weight, useful for slightly different burst exposures.
-8. **Motion / ghost rejection** — non-reference pixels that locally disagree with the aligned reference are continuously down-weighted.
-9. **Linear-light fusion** — RGB samples are averaged in linear light rather than directly averaging gamma-compressed sRGB values.
-10. **Finish pass** — adjustable midtone brightness and conservative unsharp detail enhancement.
+1. Replace the old repository contents with the contents of this folder.
+2. GitHub → **Settings → Pages**.
+3. Choose **Deploy from a branch**.
+4. Choose `main` and `/(root)`.
+5. Save.
 
-## Modes
+No npm, Vite, build step, or GitHub Action is required.
 
-- **Balanced** — the default.
-- **Detail** — stronger sharpness weighting and gentler motion rejection.
-- **Motion** — stronger ghost rejection for moving people / objects.
-- **HDR** — much stronger exposure weighting with less aggressive global exposure normalization.
+## v3.0 highlights
 
-## Run locally
+### Mobile/UI
+- redesigned phone-first workflow
+- sticky mobile action dock
+- compact burst preview after selection instead of an empty hero panel
+- horizontal frame tray with tap-to-pin reference
+- result view modes: Compare / Stacked / Reference
+- bottom-sheet export UI
+- native mobile Share support when available
+- installable PWA prompt
+- live burst preflight and output-size estimate
+- cancelable processing and screen wake lock during long stacks
 
-```bash
-npm install
-npm run dev
-```
+### Computational photography
+- composite reference scoring (sharpness + clipping + exposure)
+- optional manual reference pinning
+- ORB/RANSAC perspective alignment with transform sanity checks
+- translation-only mode and translation fallback
+- weak-alignment auto rejection
+- full-reference edge mode (keeps composition; edges may use fewer frames)
+- tight common-overlap crop mode
+- linear-light weighted fusion
+- local sharpness weighting
+- exposure confidence weighting and clipping penalty
+- color + luminance robust motion rejection
+- reference anchoring for moving regions
+- chunked fusion loops for better mobile responsiveness/cancellation
+- adaptive memory sizing based on device memory, frame count and reconstruction scale
+- 1× or 2× multi-frame reconstruction
 
-Then open the local URL Vite prints.
+### Finishing/export
+- live preview-only finishing controls (brightness, shadows, highlights, contrast, color, warmth, detail)
+- full-resolution finishing is applied only at export time to keep mobile editing responsive
+- PNG, JPEG and WebP export
+- JPEG/WebP quality control
+- full-resolution native share sheet support where the browser permits file sharing
 
-## Put it on GitHub Pages
+## External runtime dependencies
 
-1. Create a GitHub repository.
-2. Upload the contents of this folder to the repository root.
-3. Make sure the default branch is named `main`.
-4. In **Settings → Pages**, set **Source** to **GitHub Actions**.
-5. Push a commit. `.github/workflows/pages.yml` installs the dependencies, builds the app and deploys `dist/` automatically.
-
-`vite.config.js` uses `base: './'`, so the app works from a project Pages URL without hard-coding the repository name.
-
-## Memory behavior
-
-High-resolution burst reconstruction can consume a lot of browser RAM. **Adaptive full resolution** is enabled by default and chooses a conservative input size based on device memory / screen class, especially in 2× mode. You can disable it on a high-memory desktop if you want to attempt native-resolution processing.
-
-## Technical notes
-
-- OpenCV.js is loaded from the official OpenCV 4.x documentation build.
-- RAW decoding is provided by `libraw-wasm` 1.6.0.
-- All alignment/fusion is local. The only network requests are to load the application dependencies unless they are already cached.
-- 2× reconstruction can recover useful sub-pixel sampling information when the burst contains small fractional camera shifts. It cannot recover scene information that was never captured, and large motion/focus changes still reduce stack quality.
+- OpenCV.js is loaded from `docs.opencv.org`.
+- RAW files use `libraw-wasm` from `esm.sh` only when RAW input is selected.
+- JPEG/PNG/WebP stacking does not depend on the RAW decoder.
